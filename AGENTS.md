@@ -14,6 +14,7 @@ Maintain a reusable Codex Skill for safely migrating Windows directories across 
 ## Structure
 
 - `SKILL.md`: agent workflow and safety contract
+- `README.md`: bilingual user guide and installation instructions
 - `agents/openai.yaml`: Codex UI metadata
 - `scripts/`: preflight, migration, and startup-task automation
 - `LICENSE`: MIT license
