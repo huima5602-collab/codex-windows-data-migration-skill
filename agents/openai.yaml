@@ -1,0 +1,4 @@
+interface:
+  display_name: "Windows Data Migration"
+  short_description: "Safely migrate Windows directories with rollback"
+  default_prompt: "Use $migrate-windows-data to move Windows project folders to another drive while preserving their original paths."
