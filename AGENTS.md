@@ -18,7 +18,7 @@ Maintain a reusable Codex Skill for safely migrating Windows directories across 
 - `agents/openai.yaml`: Codex UI metadata
 - `scripts/`: preflight, migration, and startup-task automation
 - `scripts/Install-CodexProjectlessStorage.ps1`: projectless root compatibility repair
-- `scripts/Ensure-CodexProjectlessDateJunction.ps1`: daily date junction maintenance
+- `scripts/Ensure-CodexProjectlessDateJunction.ps1`: projectless outputs/work maintenance watcher
 - `LICENSE`: MIT license
 
 ## Commands
@@ -40,4 +40,4 @@ powershell -NoProfile -Command "$errors=$null; [System.Management.Automation.Lan
 - Keep scripts compatible with Windows PowerShell 5.1.
 - Preserve rollback behavior and path-safety validation when changing migration logic.
 - Treat SYSTEM startup migration as a last resort.
-- Keep `Documents\Codex` as a real directory; only its date children may be junctions.
+- Keep `Documents\Codex`, active date directories, and new thread roots as real directories; only thread `outputs` and `work` may be junctions.

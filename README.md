@@ -102,12 +102,14 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 Projectless thread directory must be a real directory
 ```
 
-正确结构是保留 C 盘根目录，将 `yyyy-MM-dd` 日期子目录联接到 E 盘：
+Codex 还会校验当天的 `yyyy-MM-dd` 目录，因此根目录和日期目录都必须是
+真实目录。只将每个对话的 `outputs` 与 `work` 联接到 E 盘：
 
 ```text
 C:\Users\<用户名>\Documents\Codex                  真实目录
-C:\Users\<用户名>\Documents\Codex\2026-06-10       Junction
-                                                   -> E:\CodexData\2026-06-10
+C:\Users\<用户名>\Documents\Codex\2026-06-10       真实目录
+C:\Users\<用户名>\Documents\Codex\2026-06-10\<对话>\outputs  Junction
+                                                   -> E:\CodexData\2026-06-10\<对话>\outputs
 ```
 
 先演练，再安装或修复该结构：
@@ -122,9 +124,10 @@ powershell -NoProfile -ExecutionPolicy Bypass `
   -StorageRoot "E:\CodexData"
 ```
 
-安装脚本会为当天创建日期 Junction，并注册登录时及每日 `00:01` 运行的维护
-任务。无项目对话的 `outputs`、`work` 和生成文件实际占用目标盘空间；聊天
-正文和 Codex 核心状态默认仍保存在 `%USERPROFILE%\.codex`。
+安装脚本会把旧的根目录或日期 Junction 修复为真实目录，并注册登录时启动
+的后台维护任务（每日 `00:01` 触发作为补充）。新对话根目录保留在 C 盘，
+其 `outputs`、`work` 和生成成果实际占用目标盘空间；聊天正文和 Codex
+核心状态默认仍保存在 `%USERPROFILE%\.codex`。
 
 ### 安全原则
 
@@ -239,13 +242,15 @@ threads to fail with:
 Projectless thread directory must be a real directory
 ```
 
-Keep the C-drive root real and junction each `yyyy-MM-dd` child to the storage
-drive:
+Codex also validates the active `yyyy-MM-dd` directory. Keep the root, date
+directory, and new thread root real; junction only each thread's `outputs` and
+`work` directories to the storage drive:
 
 ```text
 C:\Users\<user>\Documents\Codex                  real directory
-C:\Users\<user>\Documents\Codex\2026-06-10       Junction
-                                                 -> E:\CodexData\2026-06-10
+C:\Users\<user>\Documents\Codex\2026-06-10       real directory
+C:\Users\<user>\Documents\Codex\2026-06-10\<thread>\outputs  Junction
+                                                 -> E:\CodexData\2026-06-10\<thread>\outputs
 ```
 
 Dry-run the repair before applying it:
@@ -260,9 +265,10 @@ powershell -NoProfile -ExecutionPolicy Bypass `
   -StorageRoot "E:\CodexData"
 ```
 
-The installer creates today's date junction and registers maintenance at logon
-and daily at `00:01`. Projectless `outputs`, `work`, and generated files occupy
-the storage drive. Chat transcripts and core Codex state remain under
+The installer repairs existing root or date junctions and registers a
+background watcher at logon, with a daily `00:01` fallback trigger. New thread
+roots remain on C, while projectless `outputs`, `work`, and generated artifacts
+occupy the storage drive. Chat transcripts and core Codex state remain under
 `%USERPROFILE%\.codex` by default.
 
 ### Safety Contract
@@ -284,8 +290,8 @@ migration, confirm that:
 | `scripts/Test-MigrationPlan.ps1` | Read-only migration preflight |
 | `scripts/Invoke-DirectoryMigration.ps1` | Copy, verify, cut over, and roll back |
 | `scripts/Register-StartupMigration.ps1` | Register the last-resort startup task |
-| `scripts/Install-CodexProjectlessStorage.ps1` | Keep the projectless root real and move date directories |
-| `scripts/Ensure-CodexProjectlessDateJunction.ps1` | Prepare the current date junction |
+| `scripts/Install-CodexProjectlessStorage.ps1` | Keep projectless roots real and install output maintenance |
+| `scripts/Ensure-CodexProjectlessDateJunction.ps1` | Maintain real date roots and move `outputs`/`work` |
 | `agents/openai.yaml` | Codex Skill display metadata |
 
 ## License

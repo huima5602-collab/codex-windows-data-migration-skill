@@ -44,13 +44,6 @@ function Remove-PreparedRoot {
         return
     }
 
-    foreach ($item in Get-ChildItem -LiteralPath $Path -Force) {
-        if ($item.LinkType -ne 'Junction') {
-            throw "Refusing to clean an unexpected staging item: $($item.FullName)"
-        }
-        [System.IO.Directory]::Delete($item.FullName, $false)
-    }
-
     [System.IO.Directory]::Delete($Path, $false)
 }
 
@@ -58,7 +51,6 @@ $localRootPath = Resolve-PlannedPath -Path $LocalRoot
 $storageRootPath = Resolve-PlannedPath -Path $StorageRoot
 $maintenanceScript = Join-Path $PSScriptRoot 'Ensure-CodexProjectlessDateJunction.ps1'
 $localParent = Split-Path -Parent $localRootPath
-$stagingRoot = "$localRootPath.real-$([Guid]::NewGuid().ToString('N'))"
 $convertedRoot = $false
 
 if (
@@ -94,24 +86,13 @@ if (Test-Path -LiteralPath $localRootPath) {
 
         if ($PSCmdlet.ShouldProcess(
             $localRootPath,
-            'Replace the root junction with a real directory and date junctions'
+            'Replace the root junction with a real directory'
         )) {
-            New-Item -ItemType Directory -Path $stagingRoot | Out-Null
             try {
-                foreach (
-                    $directory in Get-ChildItem -LiteralPath $storageRootPath -Directory -Force |
-                        Where-Object { $_.Name -match '^\d{4}-\d{2}-\d{2}$' }
-                ) {
-                    New-Item `
-                        -ItemType Junction `
-                        -Path (Join-Path $stagingRoot $directory.Name) `
-                        -Target $directory.FullName | Out-Null
-                }
-
                 Remove-VerifiedDirectoryLink `
                     -Path $localRootPath `
                     -ExpectedTarget $storageRootPath
-                Move-Item -LiteralPath $stagingRoot -Destination $localRootPath
+                New-Item -ItemType Directory -Path $localRootPath | Out-Null
                 $convertedRoot = $true
             }
             catch {
@@ -124,7 +105,6 @@ if (Test-Path -LiteralPath $localRootPath) {
                         -Path $localRootPath `
                         -Target $storageRootPath | Out-Null
                 }
-                Remove-PreparedRoot -Path $stagingRoot
                 throw
             }
         }
@@ -161,7 +141,7 @@ if (-not $WhatIfPreference) {
 }
 
 $taskArguments = (
-    '-NoProfile -ExecutionPolicy Bypass -File "{0}" -LocalRoot "{1}" -StorageRoot "{2}"' -f
+    '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "{0}" -LocalRoot "{1}" -StorageRoot "{2}" -Watch' -f
         $maintenanceScript,
         $localRootPath,
         $storageRootPath
@@ -177,14 +157,15 @@ if ($PSCmdlet.ShouldProcess($TaskName, 'Register daily and logon maintenance tas
     )
     $settings = New-ScheduledTaskSettingsSet `
         -StartWhenAvailable `
-        -ExecutionTimeLimit (New-TimeSpan -Minutes 2)
+        -ExecutionTimeLimit ([TimeSpan]::Zero) `
+        -MultipleInstances IgnoreNew
 
     Register-ScheduledTask `
         -TaskName $TaskName `
         -Action $action `
         -Trigger $triggers `
         -Settings $settings `
-        -Description 'Keep Codex projectless date directories on the configured storage drive.' `
+        -Description 'Keep Codex projectless roots real while moving outputs and work to the configured storage drive.' `
         -Force | Out-Null
 }
 
