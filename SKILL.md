@@ -13,6 +13,7 @@ Use a copy-verify-switch workflow. Never delete a source directory until the cop
    - Project source and generated artifacts can usually move.
    - Chat/session records, application databases, credentials, plugin caches, and runtime installations require separate product-specific review.
    - Do not move secrets or authentication files merely to save disk space.
+   - Treat the Codex projectless root specially. Current Windows Codex builds require `Documents\Codex` itself to be a real directory, not a junction.
 2. Create a JSON migration map. Use absolute local paths and explicit allowed roots.
 3. Run `scripts/Test-MigrationPlan.ps1` and review every warning.
 4. Record Git status and commit IDs for repositories with uncommitted work.
@@ -21,6 +22,32 @@ Use a copy-verify-switch workflow. Never delete a source directory until the cop
 7. Run the migration without `-WhatIf`.
 8. Verify junction targets, file counts, total bytes, Git status, and application behavior.
 9. Use `scripts/Register-StartupMigration.ps1` only after ordinary migration repeatedly fails because a directory remains locked.
+
+## Codex Projectless Storage
+
+Do not use the general directory migration script to leave
+`Documents\Codex` as a junction. Codex validates that root before creating a
+projectless thread and reports `Projectless thread directory must be a real
+directory` when the root is a reparse point.
+
+The preflight marks this exact root as requiring the projectless installer,
+and the general migration script refuses to migrate it.
+
+Keep the root as a real directory and junction each `yyyy-MM-dd` child to the
+storage drive instead:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -File scripts\Install-CodexProjectlessStorage.ps1 `
+  -StorageRoot "E:\CodexData"
+```
+
+The installer can repair an existing root junction when it already targets the
+declared storage root. It creates today's date junction and registers a task at
+logon and daily at `00:01` to prepare future dates. Run with `-WhatIf` first.
+
+Chat transcripts and Codex application state remain under the Codex home
+directory unless they are migrated separately after product-specific review.
 
 ## Configuration
 
@@ -88,10 +115,10 @@ The registration script requests UAC elevation, copies sanitized task materials 
 
 ## Acceptance Checks
 
-- Every original path is an accessible `Junction` targeting the declared destination.
+- Every ordinary migrated source path is an accessible `Junction` targeting the declared destination.
+- For projectless Codex storage, `Documents\Codex` is a real directory and each managed date child is the expected `Junction`.
 - No `.migration-old-*` directory remains.
 - Destination file count and total logical bytes match the verified source snapshot.
 - Git HEAD, working-tree modifications, and untracked files remain unchanged.
 - Applications can still open the legacy path.
 - Any one-time scheduled task is absent after success.
-

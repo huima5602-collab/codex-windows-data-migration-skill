@@ -89,6 +89,43 @@ powershell -NoProfile -ExecutionPolicy Bypass `
   -ConfigPath .\migration.json
 ```
 
+### Codex 无项目对话目录
+
+新版 Windows Codex 要求：
+
+`C:\Users\<用户名>\Documents\Codex`
+
+必须是一个真实目录，不能把这一层直接设置为 Junction，否则新建无项目
+对话时会出现：
+
+```text
+Projectless thread directory must be a real directory
+```
+
+正确结构是保留 C 盘根目录，将 `yyyy-MM-dd` 日期子目录联接到 E 盘：
+
+```text
+C:\Users\<用户名>\Documents\Codex                  真实目录
+C:\Users\<用户名>\Documents\Codex\2026-06-10       Junction
+                                                   -> E:\CodexData\2026-06-10
+```
+
+先演练，再安装或修复该结构：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -File scripts\Install-CodexProjectlessStorage.ps1 `
+  -StorageRoot "E:\CodexData" -WhatIf
+
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -File scripts\Install-CodexProjectlessStorage.ps1 `
+  -StorageRoot "E:\CodexData"
+```
+
+安装脚本会为当天创建日期 Junction，并注册登录时及每日 `00:01` 运行的维护
+任务。无项目对话的 `outputs`、`work` 和生成文件实际占用目标盘空间；聊天
+正文和 Codex 核心状态默认仍保存在 `%USERPROFILE%\.codex`。
+
 ### 安全原则
 
 不要绕过预检或在校验前删除源目录。迁移后应确认：
@@ -189,6 +226,45 @@ powershell -NoProfile -ExecutionPolicy Bypass `
   -ConfigPath .\migration.json
 ```
 
+### Codex Projectless Threads
+
+Current Windows Codex builds require:
+
+`C:\Users\<user>\Documents\Codex`
+
+to be a real directory. Making that root a junction causes new projectless
+threads to fail with:
+
+```text
+Projectless thread directory must be a real directory
+```
+
+Keep the C-drive root real and junction each `yyyy-MM-dd` child to the storage
+drive:
+
+```text
+C:\Users\<user>\Documents\Codex                  real directory
+C:\Users\<user>\Documents\Codex\2026-06-10       Junction
+                                                 -> E:\CodexData\2026-06-10
+```
+
+Dry-run the repair before applying it:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -File scripts\Install-CodexProjectlessStorage.ps1 `
+  -StorageRoot "E:\CodexData" -WhatIf
+
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -File scripts\Install-CodexProjectlessStorage.ps1 `
+  -StorageRoot "E:\CodexData"
+```
+
+The installer creates today's date junction and registers maintenance at logon
+and daily at `00:01`. Projectless `outputs`, `work`, and generated files occupy
+the storage drive. Chat transcripts and core Codex state remain under
+`%USERPROFILE%\.codex` by default.
+
 ### Safety Contract
 
 Never skip preflight checks or delete the source before verification. After a
@@ -208,6 +284,8 @@ migration, confirm that:
 | `scripts/Test-MigrationPlan.ps1` | Read-only migration preflight |
 | `scripts/Invoke-DirectoryMigration.ps1` | Copy, verify, cut over, and roll back |
 | `scripts/Register-StartupMigration.ps1` | Register the last-resort startup task |
+| `scripts/Install-CodexProjectlessStorage.ps1` | Keep the projectless root real and move date directories |
+| `scripts/Ensure-CodexProjectlessDateJunction.ps1` | Prepare the current date junction |
 | `agents/openai.yaml` | Codex Skill display metadata |
 
 ## License

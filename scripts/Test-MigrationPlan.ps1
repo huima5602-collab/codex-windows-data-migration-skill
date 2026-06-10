@@ -18,6 +18,18 @@ function Resolve-PlannedPath {
     return [System.IO.Path]::GetFullPath($Path).TrimEnd('\')
 }
 
+function Test-IsCodexProjectlessRoot {
+    param([string]$Path)
+
+    $projectlessRoot = Resolve-PlannedPath -Path (
+        Join-Path $env:USERPROFILE 'Documents\Codex'
+    )
+    return $Path.Equals(
+        $projectlessRoot,
+        [System.StringComparison]::OrdinalIgnoreCase
+    )
+}
+
 function Test-PathBelowRoot {
     param(
         [string]$Path,
@@ -109,6 +121,7 @@ $results = foreach ($migration in $config.migrations) {
     }
 
     $sourceItem = Get-Item -LiteralPath $source -Force
+    $requiresProjectlessInstaller = Test-IsCodexProjectlessRoot -Path $source
     $summary = Get-TreeSummary -Path $source
     $git = Get-GitSummary -Path $source
     $destinationExists = Test-Path -LiteralPath $destination
@@ -138,8 +151,10 @@ $results = foreach ($migration in $config.migrations) {
         IsGitRepository = $git.IsRepository
         GitHead = $git.Head
         GitStatus = $git.Status
+        RequiresProjectlessInstaller = $requiresProjectlessInstaller
         Ready = (
             -not $sourceItem.LinkType -and
+            -not $requiresProjectlessInstaller -and
             $drive.Free -gt ($summary.TotalBytes * 1.05) -and
             (-not $destinationExists -or $destinationItemCount -eq 0)
         )
@@ -147,4 +162,3 @@ $results = foreach ($migration in $config.migrations) {
 }
 
 $results
-

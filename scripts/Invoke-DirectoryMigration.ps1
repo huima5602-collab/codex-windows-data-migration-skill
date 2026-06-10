@@ -36,6 +36,18 @@ function Resolve-PlannedPath {
     return [System.IO.Path]::GetFullPath($Path).TrimEnd('\')
 }
 
+function Test-IsCodexProjectlessRoot {
+    param([string]$Path)
+
+    $projectlessRoot = Resolve-PlannedPath -Path (
+        Join-Path $env:USERPROFILE 'Documents\Codex'
+    )
+    return $Path.Equals(
+        $projectlessRoot,
+        [System.StringComparison]::OrdinalIgnoreCase
+    )
+}
+
 function Test-PathBelowRoot {
     param(
         [string]$Path,
@@ -253,6 +265,14 @@ foreach ($migration in $config.migrations) {
         -Path $migration.destination `
         -AllowedRoots $config.allowedDestinationRoots `
         -Label 'Destination'
+
+    if (Test-IsCodexProjectlessRoot -Path $source) {
+        throw (
+            'The Codex projectless root must remain a real directory. ' +
+            'Use Install-CodexProjectlessStorage.ps1 instead: ' +
+            $source
+        )
+    }
 
     if (-not (Test-Path -LiteralPath $source)) {
         throw "Source does not exist: $source"
